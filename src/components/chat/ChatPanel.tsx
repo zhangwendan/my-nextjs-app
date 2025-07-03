@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAiSettings } from '@/store/ai-settings'
 import { SettingsModal } from './SettingsModal'
 import { MessageList } from './MessageList'
-import { Settings, Send, Bot, History, Trash2 } from 'lucide-react'
+import { Settings, Send, Bot, History, Trash2, Download } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from 'sonner'
@@ -43,12 +43,14 @@ export function ChatPanel() {
     apiKey, 
     apiBaseUrl, 
     systemPrompt, 
-    knowledgeBaseContent, 
+    knowledgeBaseFiles, 
     temperature, 
     chatHistories,
     saveChatHistory,
     deleteChatHistory,
-    clearAllHistory
+    clearAllHistory,
+    isGlobalSync,
+    syncFromServer
   } = useAiSettings()
 
   // 在 effect 中保存聊天历史，避免在渲染期间更新状态
@@ -117,7 +119,7 @@ export function ChatPanel() {
           apiKey,
           apiBaseUrl,
           systemPrompt,
-          knowledgeBase: knowledgeBaseContent,
+          knowledgeBaseFiles,
           temperature
         }),
       })
@@ -195,6 +197,16 @@ export function ChatPanel() {
      }
   }
 
+  // 处理知识库拉取最新
+  const handleSyncFromServer = async () => {
+    try {
+      await syncFromServer()
+      toast.success('知识库已更新到最新版本')
+    } catch (error) {
+      toast.error('知识库更新失败')
+    }
+  }
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-4">
@@ -223,6 +235,15 @@ export function ChatPanel() {
                   {chatHistories.length > 9 ? '9+' : chatHistories.length}
                 </span>
               )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncFromServer}
+              title="拉取最新知识库"
+              className="text-blue-600 hover:text-blue-700"
+            >
+              <Download className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"

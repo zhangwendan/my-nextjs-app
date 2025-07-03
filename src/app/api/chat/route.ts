@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKey, apiBaseUrl, systemPrompt, knowledgeBase, temperature } = await req.json()
+    const { messages, model, apiKey, apiBaseUrl, systemPrompt, knowledgeBaseFiles, temperature } = await req.json()
 
     // 基本验证
     if (!apiKey) {
@@ -26,8 +26,28 @@ export async function POST(req: NextRequest) {
     // 构建完整的系统提示词
     let fullSystemPrompt = systemPrompt || '你是🦄 锦鲤君-东风 ✨，一位经验丰富的AI助手。'
     
-    if (knowledgeBase) {
-      fullSystemPrompt += '\n\n以下是相关的知识库内容，请结合这些信息回答用户问题：\n' + knowledgeBase
+    // 处理多个知识库文件
+    if (knowledgeBaseFiles && Array.isArray(knowledgeBaseFiles) && knowledgeBaseFiles.length > 0) {
+      fullSystemPrompt += '\n\n=== 知识库信息 ===\n'
+      fullSystemPrompt += '以下是相关的知识库内容，请结合这些信息回答用户问题：\n\n'
+      
+      knowledgeBaseFiles.forEach((file, index) => {
+        if (file && file.content && file.filename) {
+          fullSystemPrompt += `--- 文件 ${index + 1}: ${file.filename} ---\n`
+          fullSystemPrompt += `${file.content}\n\n`
+        }
+      })
+      
+      fullSystemPrompt += '=== 知识库结束 ===\n'
+      fullSystemPrompt += '请基于以上知识库内容和你的知识来回答用户问题。如果知识库中有相关信息，请优先使用知识库的内容。'
+    }
+
+    // 检查系统提示词长度并给出反馈
+    const promptLength = fullSystemPrompt.length
+    console.log(`系统提示词长度: ${promptLength} 字符`)
+    
+    if (promptLength > 10000) {
+      console.log('✓ 检测到长指示词 (>10k字符)，系统完全支持')
     }
 
     // 构建消息数组
@@ -35,6 +55,16 @@ export async function POST(req: NextRequest) {
       { role: 'system', content: fullSystemPrompt },
       ...messages
     ]
+
+    // 计算总token估算 (粗略估算: 1中文字符≈1.5tokens, 1英文字符≈0.25tokens)
+    const estimatedTokens = Math.ceil(fullSystemPrompt.length * 1.2 + 
+      messages.reduce((sum: number, msg: any) => sum + (msg.content?.length || 0), 0) * 1.2)
+    
+    console.log(`预估总token数: ${estimatedTokens}`)
+    
+    if (estimatedTokens > 50000) {
+      console.log('⚠️ 检测到超长对话，可能会影响响应速度')
+    }
 
     // 调用配置的 AI API
     const response = await fetch(apiBaseUrl, {
@@ -48,6 +78,7 @@ export async function POST(req: NextRequest) {
         messages: chatMessages,
         temperature: temperature || 0.7,
         stream: true,
+        // 移除max_tokens参数，让API自动处理
       }),
     })
 
@@ -59,6 +90,14 @@ export async function POST(req: NextRequest) {
       
       // 针对常见错误提供更具体的提示
       switch (response.status) {
+        case 400:
+          // 处理参数错误
+          if (errorText.includes('max_tokens') || errorText.includes('invalid')) {
+            errorMessage = `API参数错误 (400)。请检查以下几点：\n1. API Key是否正确\n2. 模型名称是否支持\n3. 如果使用长指示词，请适当缩短内容`
+          } else {
+            errorMessage = `请求参数错误 (400)。请检查API Key和请求参数是否正确`
+          }
+          break
         case 404:
           errorMessage = `API地址不存在 (404)。请检查API地址是否正确:\n当前地址: ${apiBaseUrl}\n建议尝试: https://aihubmix.com/v1/chat/completions`
           break
@@ -70,6 +109,9 @@ export async function POST(req: NextRequest) {
           break
         case 403:
           errorMessage = `访问被拒绝 (403)。请检查API Key权限或账户余额`
+          break
+        case 413:
+          errorMessage = `请求内容过大 (413)。您的知识库或消息内容可能过长，请尝试：\n1. 减少知识库文件数量或大小\n2. 缩短系统提示词\n3. 清除部分历史对话`
           break
         case 429:
           errorMessage = `请求过于频繁 (429)。请稍后重试`
@@ -138,6 +180,10 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+        // 添加自定义头部来传递调试信息
+        'X-Prompt-Length': promptLength.toString(),
+        'X-Estimated-Tokens': estimatedTokens.toString(),
+        'X-Knowledge-Files': knowledgeBaseFiles ? knowledgeBaseFiles.length.toString() : '0'
       },
     })
   } catch (error) {
