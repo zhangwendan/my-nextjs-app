@@ -57,14 +57,14 @@ export function CurrencyConverter() {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="h-fit">
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <DollarSign className="h-4 w-4" />
           汇率计算
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2">
         <div className="space-y-1">
           <Label htmlFor="usd" className="text-xs">美元 (USD)</Label>
           <Input
@@ -73,7 +73,7 @@ export function CurrencyConverter() {
             value={usd}
             onChange={(e) => handleUsdChange(e.target.value)}
             placeholder="输入美元金额"
-            className="h-8"
+            className="h-7 text-xs"
             disabled={loading}
           />
         </div>
@@ -85,14 +85,14 @@ export function CurrencyConverter() {
             value={cny}
             onChange={(e) => handleCnyChange(e.target.value)}
             placeholder="输入人民币金额"
-            className="h-8"
+            className="h-7 text-xs"
             disabled={loading}
           />
         </div>
         
         <div className="text-xs text-gray-500">
           {loading ? (
-            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-24" />
           ) : (
             <span>汇率: 1 USD = {exchangeRate?.toFixed(4)} CNY</span>
           )}

@@ -24,14 +24,14 @@ export function QuickLinks() {
   ]
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="h-fit">
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <ExternalLink className="h-4 w-4" />
           常用链接
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1">
         {links.map((link) => {
           const IconComponent = link.icon
           return (
@@ -39,7 +39,7 @@ export function QuickLinks() {
               key={link.name}
               variant="outline"
               size="sm"
-              className="w-full justify-start h-8"
+              className="w-full justify-start h-7"
               asChild
             >
               <a

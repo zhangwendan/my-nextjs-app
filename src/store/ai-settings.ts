@@ -86,34 +86,77 @@ export const useAiSettings = create<AiSettingsState>()(
     (set, get) => ({
       ...defaultSettings,
       
-      setApiKey: (key: string) => set({ apiKey: key }),
-      setApiBaseUrl: (url: string) => set({ apiBaseUrl: url }),
-      setSystemPrompt: (prompt: string) => set({ systemPrompt: prompt }),
+      setApiKey: (key: string) => {
+        set({ apiKey: key })
+        // 如果开启了全局同步，自动保存到服务器
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
+      },
+      
+      setApiBaseUrl: (url: string) => {
+        set({ apiBaseUrl: url })
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
+      },
+      
+      setSystemPrompt: (prompt: string) => {
+        set({ systemPrompt: prompt })
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
+      },
       
       addKnowledgeFile: (file: KnowledgeFile) => {
         set((state) => ({
           knowledgeBaseFiles: [...state.knowledgeBaseFiles, file]
         }))
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
       },
       
       removeKnowledgeFile: (id: string) => {
         set((state) => ({
           knowledgeBaseFiles: state.knowledgeBaseFiles.filter(f => f.id !== id)
         }))
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
       },
       
-      clearKnowledgeFiles: () => set({ knowledgeBaseFiles: [] }),
+      clearKnowledgeFiles: () => {
+        set({ knowledgeBaseFiles: [] })
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
+      },
       
       addKnowledgeUrl: (url: KnowledgeUrl) => {
         set((state) => ({
           knowledgeBaseUrls: [...state.knowledgeBaseUrls, url]
         }))
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
       },
       
       removeKnowledgeUrl: (id: string) => {
         set((state) => ({
           knowledgeBaseUrls: state.knowledgeBaseUrls.filter(u => u.id !== id)
         }))
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
       },
       
       updateKnowledgeUrl: (id: string, updates: Partial<KnowledgeUrl>) => {
@@ -122,12 +165,35 @@ export const useAiSettings = create<AiSettingsState>()(
             u.id === id ? { ...u, ...updates } : u
           )
         }))
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
       },
       
-      clearKnowledgeUrls: () => set({ knowledgeBaseUrls: [] }),
+      clearKnowledgeUrls: () => {
+        set({ knowledgeBaseUrls: [] })
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
+      },
       
-      setTemperature: (temp: number) => set({ temperature: temp }),
-      setModelName: (name: string) => set({ modelName: name }),
+      setTemperature: (temp: number) => {
+        set({ temperature: temp })
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
+      },
+      
+      setModelName: (name: string) => {
+        set({ modelName: name })
+        const state = get()
+        if (state.isGlobalSync) {
+          state.saveToServer().catch(console.error)
+        }
+      },
       
       addModelToHistory: (modelName: string) => {
         if (!modelName.trim()) return
@@ -179,9 +245,14 @@ export const useAiSettings = create<AiSettingsState>()(
         try {
           console.log('🔄 开始从服务器同步设置...')
           const response = await fetch('/api/settings')
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+          
           const result = await response.json()
           
-          if (result.success) {
+          if (result.success && result.data) {
             const serverSettings = result.data
             console.log('📥 服务器设置:', {
               hasApiKey: !!serverSettings.apiKey,
@@ -192,22 +263,26 @@ export const useAiSettings = create<AiSettingsState>()(
               knowledgeUrls: serverSettings.knowledgeBaseUrls?.map((u: any) => u.title) || []
             })
             
+            // 只同步服务器上存在的设置，保留本地其他设置
+            const currentState = get()
             set({
-              apiKey: serverSettings.apiKey || '',
-              apiBaseUrl: serverSettings.apiBaseUrl || defaultSettings.apiBaseUrl,
-              systemPrompt: serverSettings.systemPrompt || defaultSettings.systemPrompt,
-              knowledgeBaseFiles: serverSettings.knowledgeBaseFiles || [],
-              knowledgeBaseUrls: serverSettings.knowledgeBaseUrls || [],
-              temperature: serverSettings.temperature || defaultSettings.temperature,
-              modelName: serverSettings.modelName || defaultSettings.modelName,
+              apiKey: serverSettings.apiKey || currentState.apiKey,
+              apiBaseUrl: serverSettings.apiBaseUrl || currentState.apiBaseUrl,
+              systemPrompt: serverSettings.systemPrompt || currentState.systemPrompt,
+              knowledgeBaseFiles: serverSettings.knowledgeBaseFiles || currentState.knowledgeBaseFiles,
+              knowledgeBaseUrls: serverSettings.knowledgeBaseUrls || currentState.knowledgeBaseUrls,
+              temperature: serverSettings.temperature !== undefined ? serverSettings.temperature : currentState.temperature,
+              modelName: serverSettings.modelName || currentState.modelName,
               lastSyncTime: Date.now()
             })
             console.log('✅ 设置同步完成')
           } else {
-            console.warn('⚠️ 服务器返回失败:', result.error)
+            console.warn('⚠️ 服务器返回失败:', result.error || '未知错误')
+            throw new Error(result.error || '同步失败')
           }
         } catch (error) {
           console.error('❌ 同步设置失败:', error)
+          throw error
         }
       },
       
@@ -239,20 +314,90 @@ export const useAiSettings = create<AiSettingsState>()(
             body: JSON.stringify(settingsToSync)
           })
           
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+          
           const result = await response.json()
           if (result.success) {
             set({ lastSyncTime: Date.now() })
             console.log('✅ 设置推送成功')
           } else {
             console.warn('⚠️ 推送失败:', result.error)
+            throw new Error(result.error || '推送失败')
           }
         } catch (error) {
           console.error('❌ 保存设置失败:', error)
+          throw error
         }
       }
     }),
     {
-      name: 'ai-settings-storage'
+      name: 'ai-settings-storage',
+      // 确保所有重要设置都被持久化
+      partialize: (state) => ({
+        apiKey: state.apiKey,
+        apiBaseUrl: state.apiBaseUrl,
+        systemPrompt: state.systemPrompt,
+        knowledgeBaseFiles: state.knowledgeBaseFiles,
+        knowledgeBaseUrls: state.knowledgeBaseUrls,
+        temperature: state.temperature,
+        modelName: state.modelName,
+        modelHistory: state.modelHistory,
+        chatHistories: state.chatHistories,
+        isGlobalSync: state.isGlobalSync,
+        lastSyncTime: state.lastSyncTime
+      }),
+      // 版本控制，避免不兼容的数据结构
+      version: 2,
+      // 添加迁移函数来处理版本变化
+      migrate: (persistedState: any, version: number) => {
+        console.log('🔄 正在迁移设置存储，版本:', version)
+        
+        // 如果是从旧版本迁移，返回默认设置
+        if (version < 2) {
+          console.log('📝 从旧版本迁移，使用默认设置')
+          return defaultSettings
+        }
+        
+        // 确保所有必需的字段都存在
+        const migratedState = {
+          ...defaultSettings,
+          ...persistedState
+        }
+        
+        // 验证数据结构
+        if (!Array.isArray(migratedState.knowledgeBaseFiles)) {
+          migratedState.knowledgeBaseFiles = []
+        }
+        if (!Array.isArray(migratedState.knowledgeBaseUrls)) {
+          migratedState.knowledgeBaseUrls = []
+        }
+        if (!Array.isArray(migratedState.modelHistory)) {
+          migratedState.modelHistory = defaultSettings.modelHistory
+        }
+        if (!Array.isArray(migratedState.chatHistories)) {
+          migratedState.chatHistories = []
+        }
+        
+        console.log('✅ 设置迁移完成')
+        return migratedState
+      },
+      // 添加错误处理
+      onRehydrateStorage: () => {
+        console.log('🔄 开始恢复设置存储...')
+        return (state, error) => {
+          if (error) {
+            console.error('❌ 恢复设置存储失败:', error)
+            // 如果恢复失败，重置为默认设置
+            useAiSettings.setState(defaultSettings)
+          } else {
+            console.log('✅ 设置存储恢复完成')
+          }
+        }
+      },
+      // 跳过服务端渲染时的水合
+      skipHydration: false
     }
   )
 ) 

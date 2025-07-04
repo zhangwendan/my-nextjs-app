@@ -9,20 +9,19 @@ import { Wrench } from 'lucide-react'
 
 export function ToolBar() {
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Wrench className="h-5 w-5" />
-            实用工具
-          </CardTitle>
-        </CardHeader>
-      </Card>
-
-      <UnitConverter />
-      <CurrencyConverter />
-      <WorldClock />
-      <QuickLinks />
+    <div className="h-full flex flex-col space-y-3 overflow-y-auto px-1">
+      <div className="flex-shrink-0">
+        <UnitConverter />
+      </div>
+      <div className="flex-shrink-0">
+        <CurrencyConverter />
+      </div>
+      <div className="flex-shrink-0">
+        <WorldClock />
+      </div>
+      <div className="flex-shrink-0">
+        <QuickLinks />
+      </div>
     </div>
   )
 } 

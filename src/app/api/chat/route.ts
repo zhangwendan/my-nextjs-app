@@ -50,11 +50,43 @@ export async function POST(req: NextRequest) {
       console.log('✓ 检测到长指示词 (>10k字符)，系统完全支持')
     }
 
-    // 构建消息数组
+    // 检查是否有图片消息
+    const hasImageMessage = messages.some((msg: any) => msg.imageUrl)
+    
+    // 构建消息数组，支持图片
     const chatMessages = [
       { role: 'system', content: fullSystemPrompt },
-      ...messages
+      ...messages.map((msg: any) => {
+        if (msg.imageUrl) {
+          // 构建支持图片的消息格式
+          return {
+            role: msg.role,
+            content: [
+              {
+                type: 'text',
+                text: msg.content
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: msg.imageUrl
+                }
+              }
+            ]
+          }
+        }
+        return {
+          role: msg.role,
+          content: msg.content
+        }
+      })
     ]
+
+    // 如果有图片消息，添加图片识别提示
+    if (hasImageMessage) {
+      fullSystemPrompt += '\n\n=== 图片识别说明 ===\n'
+      fullSystemPrompt += '用户可能会发送图片，请仔细分析图片内容并提供详细的描述和回答。如果图片不清晰或无法识别，请说明具体原因。'
+    }
 
     // 计算总token估算 (粗略估算: 1中文字符≈1.5tokens, 1英文字符≈0.25tokens)
     const estimatedTokens = Math.ceil(fullSystemPrompt.length * 1.2 + 
@@ -64,6 +96,10 @@ export async function POST(req: NextRequest) {
     
     if (estimatedTokens > 50000) {
       console.log('⚠️ 检测到超长对话，可能会影响响应速度')
+    }
+
+    if (hasImageMessage) {
+      console.log('🖼️ 检测到图片消息，使用图片识别模式')
     }
 
     // 调用配置的 AI API
@@ -78,7 +114,8 @@ export async function POST(req: NextRequest) {
         messages: chatMessages,
         temperature: temperature || 0.7,
         stream: true,
-        // 移除max_tokens参数，让API自动处理
+        // 如果有图片，可能需要增加最大token数
+        ...(hasImageMessage && { max_tokens: 4000 })
       }),
     })
 
@@ -94,6 +131,8 @@ export async function POST(req: NextRequest) {
           // 处理参数错误
           if (errorText.includes('max_tokens') || errorText.includes('invalid')) {
             errorMessage = `API参数错误 (400)。请检查以下几点：\n1. API Key是否正确\n2. 模型名称是否支持\n3. 如果使用长指示词，请适当缩短内容`
+          } else if (hasImageMessage) {
+            errorMessage = `图片识别请求失败 (400)。请检查：\n1. 使用的模型是否支持图片识别（推荐使用 gpt-4-vision-preview 或 gpt-4o）\n2. 图片格式是否正确\n3. 图片大小是否符合要求`
           } else {
             errorMessage = `请求参数错误 (400)。请检查API Key和请求参数是否正确`
           }
@@ -111,7 +150,7 @@ export async function POST(req: NextRequest) {
           errorMessage = `访问被拒绝 (403)。请检查API Key权限或账户余额`
           break
         case 413:
-          errorMessage = `请求内容过大 (413)。您的知识库或消息内容可能过长，请尝试：\n1. 减少知识库文件数量或大小\n2. 缩短系统提示词\n3. 清除部分历史对话`
+          errorMessage = `请求内容过大 (413)。您的知识库或消息内容可能过长，请尝试：\n1. 减少知识库文件数量或大小\n2. 缩短系统提示词\n3. 清除部分历史对话\n4. 如果上传了图片，请尝试压缩图片大小`
           break
         case 429:
           errorMessage = `请求过于频繁 (429)。请稍后重试`
@@ -183,7 +222,8 @@ export async function POST(req: NextRequest) {
         // 添加自定义头部来传递调试信息
         'X-Prompt-Length': promptLength.toString(),
         'X-Estimated-Tokens': estimatedTokens.toString(),
-        'X-Knowledge-Files': knowledgeBaseFiles ? knowledgeBaseFiles.length.toString() : '0'
+        'X-Knowledge-Files': knowledgeBaseFiles ? knowledgeBaseFiles.length.toString() : '0',
+        'X-Has-Image': hasImageMessage.toString()
       },
     })
   } catch (error) {

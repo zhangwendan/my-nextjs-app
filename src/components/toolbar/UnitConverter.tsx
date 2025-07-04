@@ -31,14 +31,14 @@ export function UnitConverter() {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="h-fit">
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Ruler className="h-4 w-4" />
           单位换算
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2">
         <div className="space-y-1">
           <Label htmlFor="inches" className="text-xs">英寸 (inch)</Label>
           <Input
@@ -47,7 +47,7 @@ export function UnitConverter() {
             value={inches}
             onChange={(e) => handleInchesChange(e.target.value)}
             placeholder="输入英寸数值"
-            className="h-8"
+            className="h-7 text-xs"
           />
         </div>
         <div className="space-y-1">
@@ -58,7 +58,7 @@ export function UnitConverter() {
             value={millimeters}
             onChange={(e) => handleMillimetersChange(e.target.value)}
             placeholder="输入毫米数值"
-            className="h-8"
+            className="h-7 text-xs"
           />
         </div>
         <p className="text-xs text-gray-500">1 英寸 = 25.4 毫米</p>

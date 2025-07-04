@@ -196,15 +196,15 @@ export function WorldClock() {
   const quickCities = ['北京', '纽约', '伦敦', '东京', '悉尼', '巴黎']
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="h-fit">
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Clock className="h-4 w-4" />
           世界时钟
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-2">
+      <CardContent className="space-y-2">
+        <div className="space-y-1">
           <Label htmlFor="city" className="text-xs">城市/地区</Label>
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -214,7 +214,7 @@ export function WorldClock() {
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="输入城市名称（支持中英文）"
-                className="h-8"
+                className="h-7 text-xs"
               />
               {/* 建议列表 */}
               {suggestions.length > 0 && (
@@ -222,7 +222,7 @@ export function WorldClock() {
                   {suggestions.map((suggestion, index) => (
                     <div
                       key={index}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                      className="px-2 py-1 hover:bg-gray-100 cursor-pointer text-xs"
                       onClick={() => handleSuggestionClick(suggestion)}
                     >
                       {suggestion}
@@ -234,7 +234,7 @@ export function WorldClock() {
             <Button 
               size="sm" 
               onClick={handleSearch}
-              className="h-8 px-3"
+              className="h-7 px-2"
             >
               <Search className="h-3 w-3" />
             </Button>
@@ -246,23 +246,18 @@ export function WorldClock() {
           
           {cityTime && (
             <div className="p-2 bg-green-50 rounded-md">
-              <div className="text-sm font-medium text-green-800">
+              <div className="text-xs font-medium text-green-800">
                 {cityInput}
               </div>
               <div className="text-xs text-green-600 font-mono">
                 {cityTime}
               </div>
-              {cityTimezone && (
-                <div className="text-xs text-green-500">
-                  时区: {cityTimezone}
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* 快捷城市 */}
-        <div className="space-y-2">
+        {/* 快捷城市 - 简化 */}
+        <div className="space-y-1">
           <Label className="text-xs">快捷查询</Label>
           <div className="grid grid-cols-3 gap-1">
             {quickCities.map((city) => (
@@ -270,7 +265,7 @@ export function WorldClock() {
                 key={city}
                 variant="outline"
                 size="sm"
-                className="h-6 text-xs"
+                className="h-6 text-xs px-1"
                 onClick={() => {
                   setCityInput(city)
                   getCityTime(city)
@@ -282,13 +277,10 @@ export function WorldClock() {
           </div>
         </div>
 
-        <div className="pt-2 border-t">
+        <div className="pt-1 border-t">
           <div className="text-xs text-gray-600 mb-1">本地时间</div>
-          <div className="text-sm font-mono">
+          <div className="text-xs font-mono">
             {currentTime ? format(currentTime, 'yyyy-MM-dd HH:mm:ss') : '--:--:--'}
-          </div>
-          <div className="text-xs text-gray-500">
-            时区: {Intl.DateTimeFormat().resolvedOptions().timeZone}
           </div>
         </div>
       </CardContent>
